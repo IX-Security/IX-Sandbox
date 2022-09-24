@@ -1,0 +1,14 @@
+{
+	"name": "IX-Sandbox",
+	"tree": {
+		"$className": "DataModel",
+
+		"ServerStorage": { "$className": "ServerStorage", "IXSandboxModule": { "$path": "Source" }  },
+		"ServerScriptService": {
+			"$className": "ServerScriptService",
+			"$properties": { "LoadStringEnabled": true },
+
+			"IXSandboxModule-Tests": { "$path": "Tests" }
+		}
+	}
+}

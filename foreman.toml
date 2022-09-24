@@ -1,0 +1,3 @@
+[tools]
+selene = { source = "Kampfkarren/selene", version = "x" }
+rojo = { source = "rojo-rbx/rojo", version = "7" }
