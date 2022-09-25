@@ -116,7 +116,7 @@ return function(Namespace)
 		return argList
 	end
 
-	function IXSandboxContext.Prototype:parseLogFunction(object)
+	function IXSandboxContext.Prototype:parseArgumentLog(object)
 		if type(object) == "function" then
 			local functionName = debug.info(object, "n")
 			local functionMemoryLoc = tostring(object)
@@ -124,11 +124,11 @@ return function(Namespace)
 			if functionName == functionMemoryLoc then
 				return functionMemoryLoc
 			else
-				return string.format("%s [%s]", functionName, string.gsub(functionMemoryLoc, "function: ", ""))
+				return string.format("<%s>%s", functionName, string.gsub(functionMemoryLoc, "function: ", ""))
 			end
 		end
 
-		return tostring(object)
+		return string.format("<%s>%s", typeof(object), tostring(object))
 	end
 
 	function IXSandboxContext.Prototype:createSandboxLog(message)
@@ -139,26 +139,28 @@ return function(Namespace)
 		self.ActivityLoggerJanitor = Janitor.new()
 
 		self.ActivityLoggerJanitor:add(self.Instance.Signals.Index:connect(function(index, result)
-			result = self:parseLogFunction(result)
+			result = self:parseArgumentLog(result)
 
-			self:createSandboxLog(string.format("[INDEX]:: _ENV.%s :== %s", index, tostring(result)))
+			self:createSandboxLog(string.format("getGlobal <%s> %s", result, index))
 		end))
 
 		self.ActivityLoggerJanitor:add(self.Instance.Signals.NewIndex:connect(function(index, result)
-			result = self:parseLogFunction(result)
+			result = self:parseArgumentLog(result)
 
-			self:createSandboxLog(string.format("[NEW-INDEX]:: _ENV.%s = %s", index, tostring(result)))
+			self:createSandboxLog(string.format("setGlobal %s %s", index, tostring(result)))
 		end))
 
 		self.ActivityLoggerJanitor:add(self.Instance.Signals.NameIndex:connect(function(object, index, result, hooked)
-			self:createSandboxLog(string.format("[INDEX@%s]:: %s.%s :== %s", hooked and "HOOKED" or "SOURCE", tostring(object), index, tostring(result)))
+			object = self:parseArgumentLog(object)
+
+			self:createSandboxLog(string.format("%s %s.%s = %s", (hooked and "get-hooked") or "get", object, index, tostring(result)))
 		end))
 
 		self.ActivityLoggerJanitor:add(self.Instance.Signals.NameNewIndex:connect(function(object, index, value, hooked)
 			index = self:parseLogFunction(index)
 			value = self:parseLogFunction(value)
 
-			self:createSandboxLog(string.format("[NEW-INDEX@%s]:: %s.%s = %s", hooked and "HOOKED" or "SOURCE", tostring(object), index, tostring(value)))
+			self:createSandboxLog(string.format("%s %s.%s = %s", (hooked and "set-hooked") or "set", object, index, value))
 		end))
 
 		self.ActivityLoggerJanitor:add(self.Instance.Signals.Call:connect(function(functionName, resultArguments, ...)
@@ -166,9 +168,9 @@ return function(Namespace)
 			local argList = self:parseLogArguments(...)
 
 			if (rArgList.n and rArgList.n > 0) or #rArgList > 0 then
-				self:createSandboxLog(string.format("[CALL]:: %s [ %s ] :== [ %s ]", functionName, table.concat(argList, ", "), table.concat(rArgList, ", ")))
+				self:createSandboxLog(string.format("call <function?>%s ( %s ) = ( %s )", functionName, table.concat(argList, ", "), table.concat(rArgList, ", ")))
 			else
-				self:createSandboxLog(string.format("[CALL]:: %s [ %s ]", functionName, table.concat(argList, ", ")))
+				self:createSandboxLog(string.format("call <function?>%s ( %s )", functionName, table.concat(argList, ", ")))
 			end
 		end))
 
@@ -177,24 +179,24 @@ return function(Namespace)
 			local argList = self:parseLogArguments(...)
 
 			if (rArgList.n and rArgList.n > 0) or #rArgList > 0 then
-				self:createSandboxLog(string.format("[NAMECALL]:: %s.%s [ %s ] :== [ %s ]", tostring(object), functionName, table.concat(argList, ", "), table.concat(rArgList, ", ")))
+				self:createSandboxLog(string.format("instance-call <%s, '%s'>%s.%s ( %s ) = ( %s )", object.ClassName, object.Name, tostring(object), functionName, table.concat(argList, ", "), table.concat(rArgList, ", ")))
 			else
-				self:createSandboxLog(string.format("[NAMECALL]:: %s.%s [ %s ]", tostring(object), functionName, table.concat(argList, ", ")))
+				self:createSandboxLog(string.format("instance-call <%s, '%s'>%s.%s ( %s )", object.ClassName, object.Name, tostring(object), functionName, table.concat(argList, ", ")))
 			end
 		end))
 
 		self.ActivityLoggerJanitor:add(self.Instance.Signals.ThreadSpawned:connect(function(generatedThread)
-			self:createSandboxLog(string.format("[NEW-THREAD]:: %s", generatedThread.UniqueId))
+			self:createSandboxLog(string.format("threadSpawned %s", generatedThread.UniqueId))
 		end))
 
 		self.ActivityLoggerJanitor:add(self.Instance.Signals.Initiated:connect(function()
 			self.ActivityStartClock = os.clock()
 
-			self:createSandboxLog(string.format("[INITIATED]:: %s", self.Instance.SandboxThread.UniqueId))
+			self:createSandboxLog(string.format("entryPoint %s", self.Instance.SandboxThread.UniqueId))
 		end))
 
 		self.ActivityLoggerJanitor:add(self.Instance.Signals.Terminated:connect(function()
-			self:createSandboxLog(string.format("[TERMINATED]:: %s (%dMS)", self.Instance.SandboxThread.UniqueId, os.clock() - self.ActivityStartClock))
+			self:createSandboxLog(string.format("terminated %s ~ %dms", self.Instance.SandboxThread.UniqueId, os.clock() - self.ActivityStartClock))
 
 			self.ActivityStartClock = nil
 		end))
