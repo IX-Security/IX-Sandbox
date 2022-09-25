@@ -33,6 +33,20 @@ return function(Namespace)
 		return setfenv(self.SourceFunction, targetInstanceEnvironment)
 	end
 
+	function IXSandboxContext.Prototype:loadModule(moduleSource)
+		local sourceType = type(moduleSource)
+
+		if sourceType == "string" then
+			local success, result = pcall(loadstring, self.Instance.Source)
+
+			assert(success, result)
+
+			return result
+		else
+			return moduleSource
+		end
+	end
+
 	function IXSandboxContext.Prototype:loadFunction()
 		local sourceType = type(self.Instance.Source)
 
@@ -58,6 +72,30 @@ return function(Namespace)
 		if self.Instance.SandboxContext then
 			IXContextParameterSetters.loadParameters(self.Instance.SandboxContext, self.Instance)
 		end
+	end
+
+	function IXSandboxContext.Prototype:generateRequireHook()
+		self.Instance:hookMethod("require", function(module)
+			local moduleType = type(module)
+
+			if moduleType == "number" then
+				if self.Instance.Tracked.Modules[module] then
+					return self.Instance.Tracked.Modules[module]()
+				end
+
+				Namespace.Console:warn("Unknown module required:", module)
+
+				error("Downloading asset failed for asset id -1.  Is the asset id correct and is the asset type \"Model\"?", 2)
+			elseif moduleType == "userdata" and module:IsA("ModuleScript") then
+				if self.Instance.Tracked.Modules[module.Name] then
+					return self.Instance.Tracked.Modules[module.Name]()
+				end
+			end
+
+			Namespace.Console:warn("Unknown module required:", module)
+
+			error("Attempted to call require with invalid argument(s).", 2)
+		end)
 	end
 
 	function IXSandboxContext.new(sandboxInstance)

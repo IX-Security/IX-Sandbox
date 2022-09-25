@@ -3,7 +3,15 @@ local IXSandboxModule = require(ServerStorage.IXSandboxModule)
 
 local SandboxSettings = IXSandboxModule.newSandboxSettings()
 local Sandbox = IXSandboxModule.newSandbox(function()
-	print(game.Workspace:GetRealPhysicsFPS())
+	local module = require(game.ReplicatedStorage.test)
+
+	print(module.text)
 end, SandboxSettings)
+
+Sandbox:importModule("test", function()
+	return {
+		text = "Hello, World!"
+	}
+end)
 
 Sandbox:execute()

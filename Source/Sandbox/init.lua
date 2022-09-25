@@ -67,6 +67,10 @@ return function(Namespace)
 		return self.ThreadPool.Pool
 	end
 
+	function IXSandbox.Prototype:importModule(moduleName, moduleValue)
+		self.Tracked.Modules[moduleName] = self:newLuaFunction(self.Context:loadModule(moduleValue))
+	end
+
 	function IXSandbox.Prototype:hookMethod(dynamicFunctionDescriptor, hookedFunction)
 		local descriptorType = type(dynamicFunctionDescriptor)
 		local functionName
@@ -133,7 +137,7 @@ return function(Namespace)
 
 	function IXSandbox.new(psuedoSandbox)
 		local sandboxInstance = setmetatable({
-			Tracked = { Filtered = { }, Unfiltered = { }, Connections = { } },
+			Tracked = { Filtered = { }, Unfiltered = { }, Connections = { }, Modules = { } },
 			Signals = {
 				Index = Signal.new(),
 				NameIndex = Signal.new(),
@@ -175,6 +179,7 @@ return function(Namespace)
 		sandboxInstance.Context:loadFunction()
 		sandboxInstance.Context:writeFunctionEnvironment()
 		sandboxInstance.Context:generateParameters()
+		sandboxInstance.Context:generateRequireHook()
 
 		return sandboxInstance:createProxyInterface()
 	end
