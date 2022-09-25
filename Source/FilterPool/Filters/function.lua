@@ -9,12 +9,6 @@ return function(Namespace, sandboxInstance)
 				return
 			end
 
-			if userdata then
-				sandboxInstance.Signals.Namecall:fire(functionName, ...)
-			else
-				sandboxInstance.Signals.Call:fire(functionName, ...)
-			end
-
 			local filteredArguments = table.pack(...)
 			local unfilteredArguments = sandboxInstance.FilterPool:sanitizeFilteredList(filteredArguments)
 
@@ -25,6 +19,12 @@ return function(Namespace, sandboxInstance)
 			end
 
 			filteredArguments = sandboxInstance.FilterPool:sanitizeUnfilteredList(unfilteredArguments)
+
+			if userdata then
+				sandboxInstance.Signals.Namecall:fire(userdata, functionName, filteredArguments, ...)
+			else
+				sandboxInstance.Signals.Call:fire(functionName, filteredArguments, ...)
+			end
 
 			return table.unpack(filteredArguments, 1, unfilteredArguments.n)
 		end

@@ -19,8 +19,6 @@ return function(Namespace)
 	function IXSandboxEnvironment.Prototype:generateIndex(object)
 		return function(_, index)
 			if object then
-				self.Instance.Signals.NameIndex:fire(object, index)
-
 				if self.Instance.Hooks.MetaMethods.__index then
 					local hookedResult = self.Instance.Hooks.MetaMethods.__index(object, index)
 					local hookedResultType = type(hookedResult)
@@ -29,16 +27,22 @@ return function(Namespace)
 						hookedResult = self.Instance:newLuaFunction(hookedResult)
 					end
 
+					self.Instance.Signals.NameIndex:fire(object, index, hookedResult, true)
+
 					return self:filterIndexResult(hookedResult, object)
 				end
 
+				self.Instance.Signals.NameIndex:fire(object, index, object[index])
+
 				return self:filterIndexResult(object[index], object)
 			else
-				self.Instance.Signals.Index:fire(index)
-
 				if self.Internal[index] then
+					self.Instance.Signals.Index:fire(index, self.Internal[index], true)
+
 					return self.Internal[index]
 				end
+
+				self.Instance.Signals.Index:fire(index, self.InternalEnvironment[index])
 
 				return self:filterIndexResult(self.InternalEnvironment[index])
 			end
@@ -58,7 +62,7 @@ return function(Namespace)
 
 				object[index] = value
 			else
-				self.Instance.Signals.NewIndex:fire(object, index, value)
+				self.Instance.Signals.NewIndex:fire(index, value)
 
 				rawset(environment, index, value)
 			end

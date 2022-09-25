@@ -135,9 +135,26 @@ return function(Namespace)
 		self.Hooks.Blocked[functionName] = true
 	end
 
+	function IXSandbox.Prototype:generateActivityReport(history)
+		history = history or #self.Activity
+
+		local report = ""
+
+		for index = 0, history do
+			local object = self.Activity[#self.Activity - index]
+
+			if object then
+				report = object .. "\n" .. report
+			end
+		end
+
+		return report
+	end
+
 	function IXSandbox.new(psuedoSandbox)
 		local sandboxInstance = setmetatable({
 			Tracked = { Filtered = { }, Unfiltered = { }, Connections = { }, Modules = { } },
+			Activity = { },
 			Signals = {
 				Index = Signal.new(),
 				NameIndex = Signal.new(),
@@ -152,7 +169,7 @@ return function(Namespace)
 				Initiated = Signal.new(),
 				Terminated = Signal.new(),
 				Destroyed = Signal.new(),
-			},
+			}, 
 
 			Hooks = { Functions = { }, MetaMethods = { }, Blocked = { } },
 
@@ -180,6 +197,7 @@ return function(Namespace)
 		sandboxInstance.Context:writeFunctionEnvironment()
 		sandboxInstance.Context:generateParameters()
 		sandboxInstance.Context:generateRequireHook()
+		sandboxInstance.Context:createActivityLogger()
 
 		return sandboxInstance:createProxyInterface()
 	end
