@@ -31,8 +31,11 @@ function IXSandboxModule.newSandboxSettings(): TypesModule.Settings
 end
 
 function IXSandboxModule.newSandbox(source: string, sandboxSettings: TypesModule.Settings): TypesModule.Class
-	assert(type(source) == "string", "Expected Source: string, Got: " .. tostring(source))
-	assert(#source > 0, "Expected Source: string, Got: <EmptyString>")
+	local sourceType = type(source)
+
+	if sourceType == "string" then
+		assert(#source > 0, "Expected Source: string, Got: <EmptyString>")
+	end
 
 	if sandboxSettings then
 		assert(IXSupportedSandboxTypes[sandboxSettings.Type], "Unsupported SandboxType: " .. tostring(sandboxSettings.Type))

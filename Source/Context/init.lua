@@ -34,14 +34,24 @@ return function(Namespace)
 	end
 
 	function IXSandboxContext.Prototype:loadFunction()
-		local success, result = pcall(loadstring, self.Instance.Source)
+		local sourceType = type(self.Instance.Source)
 
-		assert(success, result)
+		if sourceType == "string" then
+			local success, result = pcall(loadstring, self.Instance.Source)
 
-		self.SourceFunction = result
-		self.SourceThread = coroutine.create(self.SourceFunction)
+			assert(success, result)
 
-		self.Instance.ThreadPool:initiateSandboxThread(self.SourceThread)
+			self.SourceFunction = result
+			self.SourceThread = coroutine.create(self.SourceFunction)
+
+			self.Instance.ThreadPool:initiateSandboxThread(self.SourceThread)
+		else
+			self.SourceFunction = self.Instance.Source
+			self.SourceThread = coroutine.create(self.SourceFunction)
+
+			self.Instance.Source = "<Unknown>"
+			self.Instance.ThreadPool:initiateSandboxThread(self.SourceThread)
+		end
 	end
 
 	function IXSandboxContext.Prototype:generateParameters()

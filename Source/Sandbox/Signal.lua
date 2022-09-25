@@ -33,7 +33,7 @@ function Signal:connect(callback)
         end
     end)
 
-    signalConnection:Reconnect()
+    signalConnection:reconnect()
     return signalConnection
 end
 
@@ -57,7 +57,9 @@ function Signal.newConnection(ConnectCallback, disconnectCallback)
         _connect = ConnectCallback,
         _disconnect = disconnectCallback,
         connected = false
-    }, Connection)
+    }, {
+		__index = Connection
+	})
 end
 
 function Signal.new()

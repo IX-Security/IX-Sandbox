@@ -8,25 +8,70 @@ IXSandboxEnvironment.SandboxEnvironment = getfenv()
 IXSandboxEnvironment.Prototype = { }
 
 return function(Namespace)
-	function IXSandboxEnvironment.Prototype:generateIndex()
+	function IXSandboxEnvironment.Prototype:filterIndexResult(uniqueObject, ...)
+		if self.Instance.FilterPool:isObjectFilterable(uniqueObject) then
+			return self.Instance.FilterPool:sanitize(uniqueObject, ...)
+		else
+			return uniqueObject
+		end
+	end
+
+	function IXSandboxEnvironment.Prototype:generateIndex(object)
 		return function(_, index)
-			return self.Environment[index]
+			if object then
+				self.Instance.Signals.NameIndex:fire(object, index)
+
+				if self.Instance.Hooks.MetaMethods.__index then
+					local hookedResult = self.Instance.Hooks.MetaMethods.__index(object, index)
+					local hookedResultType = type(hookedResult)
+
+					if hookedResultType == "function" and debug.info(hookedResult, "s") ~= "[C]" then
+						hookedResult = self.Instance:newLuaFunction(hookedResult)
+					end
+
+					return self:filterIndexResult(hookedResult, object)
+				end
+
+				return self:filterIndexResult(object[index], object)
+			else
+				self.Instance.Signals.Index:fire(index)
+
+				if self.Internal[index] then
+					return self.Internal[index]
+				end
+
+				return self:filterIndexResult(self.InternalEnvironment[index])
+			end
 		end
 	end
 
-	function IXSandboxEnvironment.Prototype:generateNewIndex()
-		return function(self, index, value)
-			rawset(self, index, value)
+	function IXSandboxEnvironment.Prototype:generateNewIndex(object)
+		return function(environment, index, value)
+			if object then
+				self.Instance.Signals.NameNewIndex:fire(object, index, value)
+
+				if self.Instance.Hooks.MetaMethods.__newindex then
+					self.Instance.Hooks.MetaMethods.__newindex(object, index, value)
+
+					return
+				end
+
+				object[index] = value
+			else
+				self.Instance.Signals.NewIndex:fire(object, index, value)
+
+				rawset(environment, index, value)
+			end
 		end
 	end
 
-	function IXSandboxEnvironment.Prototype:generatePsuedoMetaMethods()
-		local index = Hook.new(self:generateIndex())
-		local newIndex = Hook.new(self:generateNewIndex())
+	function IXSandboxEnvironment.Prototype:generatePsuedoMetaMethods(...)
+		local index = self:generateIndex(...)
+		local newIndex = self:generateNewIndex(...)
 
 		return { 
-			__index = index:generateLuaRawFunction(),
-			__newindex = newIndex:generateLuaRawFunction()
+			__index = index,
+			__newindex = newIndex
 		}
 	end
 
@@ -52,20 +97,20 @@ return function(Namespace)
 		end
 
 		self.GenericMetaTable = genericMetaMethods
-		self.Instance.SandboxEnvironment = setmetatable(self.Generic, self.GenericMetaTable)
+		self.Instance.SandboxEnvironment = setmetatable(self.Environment, self.GenericMetaTable)
 	end
 
 	function IXSandboxEnvironment.Prototype:generateUniqueEnvironment()
-		self.Generic = self:generateEnvironmentFromDefinition()
-		self.Ghost = { }
+		self.Environment = self:generateEnvironmentFromDefinition()
 
 		self:protectGeneratedResources()
 	end
 
 	function IXSandboxEnvironment.new(sandboxInstance)
 		local environmentInstance = setmetatable({
+			Internal = { ["getfenv"] = getfenv, ["setfenv"] = setfenv },
 			Instance = sandboxInstance,
-			Environment = sandboxInstance.SandboxEnvironment or IXSandboxEnvironment.SandboxEnvironment
+			InternalEnvironment = sandboxInstance.SandboxEnvironment or IXSandboxEnvironment.SandboxEnvironment
 		}, {
 			__index = IXSandboxEnvironment.Prototype
 		})

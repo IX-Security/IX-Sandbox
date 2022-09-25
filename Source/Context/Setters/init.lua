@@ -18,5 +18,6 @@ function IXContextParameterSetters.loadParameters(parameterList, sandboxInstance
 end
 
 IXContextParameterSetters.importSetterModule("SourceName")
+IXContextParameterSetters.importSetterModule("Caller")
 
 return IXContextParameterSetters

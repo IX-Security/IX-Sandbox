@@ -54,25 +54,103 @@ return function(Namespace)
 		setmetatable(self, { __mode = "kv" })
 	end
 
+	function IXSandbox.Prototype:newLuaFunction(luaFunction)
+		assert(self.SandboxEnvironment ~= nil, "LuaFunctions can only be defined once an environment is created")
+		setfenv(luaFunction, self.SandboxEnvironment)
+
+		return luaFunction
+	end
+
+	function IXSandbox.Prototype:getThreads()
+		self.ThreadPool:updateThreadStates()
+
+		return self.ThreadPool.Pool
+	end
+
+	function IXSandbox.Prototype:hookMethod(dynamicFunctionDescriptor, hookedFunction)
+		local descriptorType = type(dynamicFunctionDescriptor)
+		local functionName
+
+		if descriptorType == "function" then
+			functionName = debug.info(dynamicFunctionDescriptor, "n")
+		else
+			functionName = dynamicFunctionDescriptor
+		end
+
+		self.Hooks.Functions[functionName] = hookedFunction
+	end
+
+	function IXSandbox.Prototype:hookMetaMethod(metaMethod, hookedMethod)
+		self.Hooks.MetaMethods[metaMethod] = hookedMethod
+	end
+
+	function IXSandbox.Prototype:addLibrary(libraryName, library)
+		assert(type(libraryName) == "string", "Expected libraryName to be a string")
+
+		local filterTable
+
+		function filterTable(source)
+			for key, value in source do
+				local valueType = type(value)
+
+				if valueType == "function" then
+					source[key] = self.FilterPool:sanitize(self:newLuaFunction(value))
+				elseif valueType == "table" then
+					source[key] = filterTable(value)
+				elseif self.FilterPool:isObjectFilterable(value) then
+					source[key] = self.FilterPool:sanitize(value)
+				end
+			end
+		end
+
+		self.Environment.Internal[libraryName] = filterTable(library)
+	end
+
+	function IXSandbox.Prototype:addGlobal(globalName, value)
+		local typeValue = type(value)
+
+		assert(type(globalName) == "string", "Expected globalName to be a string")
+
+		if typeValue == "function" then
+			value = self:newLuaFunction(value)
+		end
+
+		self.Environment.Internal[globalName] = value
+	end
+
+	function IXSandbox.Prototype:blockMethod(dynamicFunctionDescriptor)
+		local descriptorType = type(dynamicFunctionDescriptor)
+		local functionName
+
+		if descriptorType == "function" then
+			functionName = debug.info(dynamicFunctionDescriptor, "n")
+		else
+			functionName = dynamicFunctionDescriptor
+		end
+
+		self.Hooks.Blocked[functionName] = true
+	end
+
 	function IXSandbox.new(psuedoSandbox)
 		local sandboxInstance = setmetatable({
-			Tracked = { Datas = { }, Proxies = { } },
-			IndexExceptions = { }, Signals = {
+			Tracked = { Filtered = { }, Unfiltered = { }, Connections = { } },
+			Signals = {
 				Index = Signal.new(),
-				Newindex = Signal.new(),
-				Nameindex = Signal.new(),
+				NameIndex = Signal.new(),
+				NewIndex = Signal.new(),
+				NameNewIndex = Signal.new(),
 
 				Call = Signal.new(),
 				Namecall = Signal.new(),
 
 				ThreadSpawned = Signal.new(),
-				ObjectFiltered = Signal.new(),
-				ConnectionSpawned = Signal.new(),
 
 				Initiated = Signal.new(),
 				Terminated = Signal.new(),
 				Destroyed = Signal.new(),
 			},
+
+			Hooks = { Functions = { }, MetaMethods = { }, Blocked = { } },
 
 			ExtensionFlags = {
 				[SANDBOX_PARALLEL_NAME] = true,

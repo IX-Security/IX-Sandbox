@@ -24,14 +24,6 @@ return function(Namespace)
 		self:updateThreadState()
 	end
 
-	function IXSandboxThread.Prototype:destroy()
-		if self.State ~= "dead" then
-			self:closeThread()
-		end
-
-		setmetatable(self, { __mode = "kv" })
-	end
-
 	function IXSandboxThread.new(threadObject)
 		local threadInstance = setmetatable({
 			Thread = threadObject,

@@ -7,12 +7,18 @@ return function(Namespace)
 
 	function IXSandboxThreadPool.Prototype:updateThreadStates()
 		for _, threadObject in self.Pool do
-			threadObject:updateThreadState()
+			if threadObject.State == "dead" and not threadObject.EntryThread then
+				self:removeFromThreadPool(threadObject)
+			else
+				threadObject:updateThreadState()
+			end
 		end
 	end
 
 	function IXSandboxThreadPool.Prototype:toThreadList(reeverseList)
 		local threadList = { }
+
+		self:updateThreadStates()
 
 		for _, threadObject in self.Pool do
 			table.insert(threadList, threadObject)
@@ -31,6 +37,8 @@ return function(Namespace)
 
 	function IXSandboxThreadPool.Prototype:queryThread(threadObject)
 		local threadUniqueId = IXSandboxThread.getThreadName(threadObject)
+
+		self:updateThreadStates()
 
 		return self.Pool[threadUniqueId]
 	end
@@ -52,13 +60,21 @@ return function(Namespace)
 		assert(self.Instance.SandboxThread == nil, "Internal SandboxThread already exists")
 
 		self.Instance.SandboxThread = IXSandboxThread.new(threadObject)
+		self.Instance.SandboxThread.EntryThread = true
+
+		self.Instance.Signals.ThreadSpawned:fire(self.Instance.SandboxThread, true)
+
 		self:addToThreadPool(self.Instance.SandboxThread)
+		self:updateThreadStates()
 	end
 
 	function IXSandboxThreadPool.Prototype:initiateSpawnedThread(threadObject)
 		local generatedThreadWrapper = IXSandboxThread.new(threadObject)
 
+		self.Instance.Signals.ThreadSpawned:fire(generatedThreadWrapper)
+
 		self:addToThreadPool(generatedThreadWrapper)
+		self:updateThreadStates()
 	end
 
 	function IXSandboxThreadPool.new(sandboxInstance)
