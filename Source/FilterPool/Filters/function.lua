@@ -3,6 +3,8 @@ return function(Namespace, sandboxInstance)
 		local functionName = debug.info(unfilteredObject, "n")
 
 		return function(...)
+			sandboxInstance.ThreadPool:queryThread():onNewThreadCall()
+
 			if sandboxInstance.Hooks.Blocked[functionName] then
 				Namespace.Console:warn("Attempted to call Blocked Method: `", functionName, "` [", ..., "]")
 
@@ -21,9 +23,9 @@ return function(Namespace, sandboxInstance)
 			filteredArguments = sandboxInstance.FilterPool:sanitizeUnfilteredList(unfilteredArguments)
 
 			if userdata then
-				sandboxInstance.Signals.Namecall:fire(userdata, functionName, filteredArguments, ...)
+				sandboxInstance:invokeSandboxSignal("Namecall", userdata, functionName, filteredArguments, ...)
 			else
-				sandboxInstance.Signals.Call:fire(functionName, filteredArguments, ...)
+				sandboxInstance:invokeSandboxSignal("Call", functionName, filteredArguments, ...)
 			end
 
 			return table.unpack(filteredArguments, 1, unfilteredArguments.n)

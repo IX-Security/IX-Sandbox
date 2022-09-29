@@ -3,7 +3,16 @@
 	"tree": {
 		"$className": "DataModel",
 
-		"ServerStorage": { "$className": "ServerStorage", "IXSandboxModule": { "$path": "Source" }  },
+		"ServerStorage": { 
+			"$className": "ServerStorage", 
+			
+			"IXSandboxModule": { "$path": "Source" },
+			"Submodules": {
+				"$className": "Folder",
+
+				"TestEZ": { "$path": "Submodules/TestEZ/src" }
+			}
+		},
 		"ServerScriptService": {
 			"$className": "ServerScriptService",
 			"$properties": { "LoadStringEnabled": true },

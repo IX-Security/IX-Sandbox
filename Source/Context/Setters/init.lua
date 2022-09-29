@@ -17,7 +17,8 @@ function IXContextParameterSetters.loadParameters(parameterList, sandboxInstance
 	end
 end
 
+IXContextParameterSetters.importSetterModule("ThrottleLimit")
 IXContextParameterSetters.importSetterModule("SourceName")
-IXContextParameterSetters.importSetterModule("Caller")
+IXContextParameterSetters.importSetterModule("ExposeCaller")
 
 return IXContextParameterSetters

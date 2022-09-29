@@ -1,6 +1,7 @@
 
 
 local IX_YIELD_FUNCTION_WARNING_MESSAGE = ""
+local IX_THROTTLE_LIFECYCLE = 0
 
 local Janitor = require((script and script.Janitor) or "Context/Janitor.lua")
 
@@ -200,6 +201,26 @@ return function(Namespace)
 
 			self.ActivityStartClock = nil
 		end))
+	end
+
+	function IXSandboxContext.Prototype:createThrottleDaemon()
+		self.DaemonFunction = function()
+			while true do
+				if self.Instance.ThrottleSize > 0 then
+					self.Instance.ThrottleSize -= 1
+
+					if self.Instance.ThrottleSize < self.Instance.ThrottleLimit / 4 then
+						self.Instance.ThreadPool:resumeAllThreads()
+						self.Instance.isThrottled = false
+					end
+				end
+
+				task.wait(IX_THROTTLE_LIFECYCLE)
+			end
+		end
+
+		self.DaemonThread = task.spawn(self.DaemonFunction)
+		self.Instance.ThrottleDaemon = self.DaemonThread
 	end
 
 	function IXSandboxContext.new(sandboxInstance)

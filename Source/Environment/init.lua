@@ -27,22 +27,22 @@ return function(Namespace)
 						hookedResult = self.Instance:newLuaFunction(hookedResult)
 					end
 
-					self.Instance.Signals.NameIndex:fire(object, index, hookedResult, true)
+					self.Instance:invokeSandboxSignal("NameIndex", object, index, hookedResult, true)
 
 					return self:filterIndexResult(hookedResult, object)
 				end
 
-				self.Instance.Signals.NameIndex:fire(object, index, object[index])
+				self.Instance:invokeSandboxSignal("NameIndex", object, index, object[index])
 
 				return self:filterIndexResult(object[index], object)
 			else
 				if self.Internal[index] then
-					self.Instance.Signals.Index:fire(index, self.Internal[index], true)
+					self.Instance:invokeSandboxSignal("Index", index, self.Internal[index], true)
 
 					return self.Internal[index]
 				end
 
-				self.Instance.Signals.Index:fire(index, self.InternalEnvironment[index])
+				self.Instance:invokeSandboxSignal("Index", index, self.InternalEnvironment[index])
 
 				return self:filterIndexResult(self.InternalEnvironment[index])
 			end
@@ -52,7 +52,7 @@ return function(Namespace)
 	function IXSandboxEnvironment.Prototype:generateNewIndex(object)
 		return function(environment, index, value)
 			if object then
-				self.Instance.Signals.NameNewIndex:fire(object, index, value)
+				self.Instance:invokeSandboxSignal("NameNewIndex", object, index, value)
 
 				if self.Instance.Hooks.MetaMethods.__newindex then
 					self.Instance.Hooks.MetaMethods.__newindex(object, index, value)
@@ -62,7 +62,7 @@ return function(Namespace)
 
 				object[index] = value
 			else
-				self.Instance.Signals.NewIndex:fire(index, value)
+				self.Instance:invokeSandboxSignal("NewIndex", index, value)
 
 				rawset(environment, index, value)
 			end
@@ -112,7 +112,7 @@ return function(Namespace)
 
 	function IXSandboxEnvironment.new(sandboxInstance)
 		local environmentInstance = setmetatable({
-			Internal = { ["getfenv"] = getfenv, ["setfenv"] = setfenv },
+			Internal = { ["getfenv"] = getfenv, ["setfenv"] = setfenv, ["xpcall"] = xpcall, ["pcall"] = pcall, ["ypcall"] = ypcall },
 			Instance = sandboxInstance,
 			InternalEnvironment = sandboxInstance.SandboxEnvironment or IXSandboxEnvironment.SandboxEnvironment
 		}, {

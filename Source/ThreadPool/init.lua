@@ -36,6 +36,8 @@ return function(Namespace)
 	end
 
 	function IXSandboxThreadPool.Prototype:queryThread(threadObject)
+		threadObject = threadObject or coroutine.running()
+
 		local threadUniqueId = IXSandboxThread.getThreadName(threadObject)
 
 		self:updateThreadStates()
@@ -62,7 +64,7 @@ return function(Namespace)
 		self.Instance.SandboxThread = IXSandboxThread.new(threadObject)
 		self.Instance.SandboxThread.EntryThread = true
 
-		self.Instance.Signals.ThreadSpawned:fire(self.Instance.SandboxThread, true)
+		self.Instance:invokeSandboxSignal("ThreadSpawned", self.Instance.SandboxThread, true)
 
 		self:addToThreadPool(self.Instance.SandboxThread)
 		self:updateThreadStates()
@@ -71,10 +73,22 @@ return function(Namespace)
 	function IXSandboxThreadPool.Prototype:initiateSpawnedThread(threadObject)
 		local generatedThreadWrapper = IXSandboxThread.new(threadObject)
 
-		self.Instance.Signals.ThreadSpawned:fire(generatedThreadWrapper)
+		self.Instance:invokeSandboxSignal("ThreadSpawned", generatedThreadWrapper)
 
 		self:addToThreadPool(generatedThreadWrapper)
 		self:updateThreadStates()
+	end
+
+	function IXSandboxThreadPool.Prototype:yieldAllThreads()
+		for _, threadObject in self.Pool do
+			threadObject:yieldThread()
+		end
+	end
+
+	function IXSandboxThreadPool.Prototype:resumeAllThreads()
+		for _, threadObject in self.Pool do
+			threadObject:resumeThread()
+		end
 	end
 
 	function IXSandboxThreadPool.new(sandboxInstance)

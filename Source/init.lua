@@ -25,7 +25,9 @@ function IXSandboxModule.newSandboxSettings(): TypesModule.Settings
 		Type = "Roblox",
 		Environment = false,
 		Context = {
-			SourceName = { "IX-Sandbox-Script" }
+			SourceName = { "IX-Sandbox-Script" },
+			ExposeCaller = { false },
+			ThrottleLimit = { false }
 		}
 	}
 end

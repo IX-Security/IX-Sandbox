@@ -4,6 +4,8 @@ local SANDBOX_TRACER_NAME = "SANDBOX_TRACER"
 local SANDBOX_PARALLEL_NAME = "SANDBOX_PARALLEL"
 local SANDBOX_YIELD_CALL = "SANDBOX_YIELD_CALL"
 
+local SANDBOX_THROTTLE_LIMIT = 100
+
 local Signal = require((script and script.Signal) or "Sandbox/Signal.lua")
 
 local IXSandbox = { Name = SANDBOX_TYPE_STRING }
@@ -49,8 +51,17 @@ return function(Namespace)
 	end
 
 	function IXSandbox.Prototype:destroy()
-		self.Signals.Destroyed:fire()
+		if self.ThrottleDaemon then
+			local success
 
+			while not success do
+				success = pcall(coroutine.close, self.ThrottleDaemon)
+
+				task.wait()
+			end
+		end
+
+		self.Signals.Destroyed:fire()
 		setmetatable(self, { __mode = "kv" })
 	end
 
@@ -151,8 +162,29 @@ return function(Namespace)
 		return report
 	end
 
+	function IXSandbox.Prototype:throttleOutboundRequests()
+		self.isThrottled = true
+		self.ThreadPool:yieldAllThreads()
+	end
+
+	function IXSandbox.Prototype:incrementThrottledRequest()
+		self.ThrottleSize += 1
+
+		if self.ThrottleSize >= self.ThrottleLimit then
+			self:throttleOutboundRequests()
+		end
+	end
+
+	function IXSandbox.Prototype:invokeSandboxSignal(signal, ...)
+		self.Signals[signal]:fire(...)
+
+		self:incrementThrottledRequest()
+	end
+
 	function IXSandbox.new(psuedoSandbox)
 		local sandboxInstance = setmetatable({
+			isThrottled = false,
+
 			Tracked = { Filtered = { }, Unfiltered = { }, Connections = { }, Modules = { } },
 			Activity = { },
 			Signals = {
@@ -169,8 +201,10 @@ return function(Namespace)
 				Initiated = Signal.new(),
 				Terminated = Signal.new(),
 				Destroyed = Signal.new(),
-			}, 
+			},
 
+			ThrottleSize = 0,
+			ThrottleLimit = SANDBOX_THROTTLE_LIMIT,
 			Hooks = { Functions = { }, MetaMethods = { }, Blocked = { } },
 
 			ExtensionFlags = {
@@ -198,6 +232,7 @@ return function(Namespace)
 		sandboxInstance.Context:generateParameters()
 		sandboxInstance.Context:generateRequireHook()
 		sandboxInstance.Context:createActivityLogger()
+		sandboxInstance.Context:createThrottleDaemon()
 
 		return sandboxInstance:createProxyInterface()
 	end
